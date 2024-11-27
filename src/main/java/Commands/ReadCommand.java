@@ -20,7 +20,7 @@ public class ReadCommand implements Command {
 
     public void execute() {
         if (filepath.length < 1) {
-            System.out.println("wrong filepath");
+            System.out.println("Error: filepath is empty");
             return;
         }
 
@@ -112,31 +112,23 @@ public class ReadCommand implements Command {
             int tagStart = innerContent.indexOf("<", currentIndex);
 
             if(tagStart == -1) {
-                // 处理剩余文本
-                String remainingText = innerContent.substring(currentIndex).trim();
-                if (!remainingText.isEmpty()) {
-                    parent.addChild(new HtmlElement("text", null, remainingText));
-                }
+                parent.setText(innerContent.substring(currentIndex).trim());
                 break;
             }
 
-            // 处理标签前的文本
             if (tagStart > currentIndex) {
                 String text = innerContent.substring(currentIndex, tagStart).trim();
                 if(!text.isEmpty()) {
-                    parent.addChild(new HtmlElement("text", null, text));
+                    parent.addChild(new HtmlElement("text",null,text));
                 }
             }
 
-            // 提取完整标签
             int tagEnd = innerContent.indexOf(">", tagStart) + 1;
             String tagContent = extractCompleteTag(innerContent, tagStart, tagEnd);
 
-            // 解析标签
             HtmlElement child = parseElement(tagContent);
             parent.addChild(child);
 
-            // 更新当前索引
             currentIndex = tagStart + tagContent.length();
         }
     }
@@ -156,29 +148,27 @@ public class ReadCommand implements Command {
         String openTag = "<" + tagName;
         String closeTag = "</" + tagName + ">";
 
-        int nestLevel = 1;
-        int searchIndex = fromIndex;
+        int openCount = 1;
+        int currentIndex = fromIndex;
 
-        while (nestLevel > 0) {
-            int nextOpenTag = content.indexOf(openTag, searchIndex);
-            int nextCloseTag = content.indexOf(closeTag, searchIndex);
+        while (openCount > 0) {
+            int nextOpen = content.indexOf(openTag, currentIndex);
+            int nextClose = content.indexOf(closeTag, currentIndex);
 
-            // 没有找到闭合标签
-            if (nextCloseTag == -1) {
-                throw new IllegalArgumentException("Cannot find closing tag for: " + tagName);
+            if(nextClose == -1) {
+                throw new IllegalArgumentException("Cannot find closing tag:" + closeTag);
             }
 
-            // 如果下一个打开标签在闭合标签之前，说明有嵌套
-            if (nextOpenTag != -1 && nextOpenTag < nextCloseTag) {
-                nestLevel++;
-                searchIndex = nextOpenTag + openTag.length();
+            if(nextOpen != -1 && nextOpen < nextClose) {
+                openCount++;
+                currentIndex = nextOpen + openTag.length();
             } else {
-                nestLevel--;
-                searchIndex = nextCloseTag + closeTag.length();
+                openCount--;
+                currentIndex = nextClose + closeTag.length();
             }
         }
 
-        return searchIndex;
+        return currentIndex - closeTag.length();
     }
 
 }
