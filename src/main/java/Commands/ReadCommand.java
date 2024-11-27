@@ -112,23 +112,31 @@ public class ReadCommand implements Command {
             int tagStart = innerContent.indexOf("<", currentIndex);
 
             if(tagStart == -1) {
-                parent.setText(innerContent.substring(currentIndex).trim());
+                // 处理剩余文本
+                String remainingText = innerContent.substring(currentIndex).trim();
+                if (!remainingText.isEmpty()) {
+                    parent.addChild(new HtmlElement("text", null, remainingText));
+                }
                 break;
             }
 
+            // 处理标签前的文本
             if (tagStart > currentIndex) {
                 String text = innerContent.substring(currentIndex, tagStart).trim();
                 if(!text.isEmpty()) {
-                    parent.addChild(new HtmlElement("text",null,text));
+                    parent.addChild(new HtmlElement("text", null, text));
                 }
             }
 
+            // 提取完整标签
             int tagEnd = innerContent.indexOf(">", tagStart) + 1;
             String tagContent = extractCompleteTag(innerContent, tagStart, tagEnd);
 
+            // 解析标签
             HtmlElement child = parseElement(tagContent);
             parent.addChild(child);
 
+            // 更新当前索引
             currentIndex = tagStart + tagContent.length();
         }
     }
@@ -148,27 +156,29 @@ public class ReadCommand implements Command {
         String openTag = "<" + tagName;
         String closeTag = "</" + tagName + ">";
 
-        int openCount = 1;
-        int currentIndex = fromIndex;
+        int nestLevel = 1;
+        int searchIndex = fromIndex;
 
-        while (currentIndex > 0) {
-            int nextOpen = content.indexOf(closeTag, currentIndex);
-            int nextClose = content.indexOf(closeTag, currentIndex);
+        while (nestLevel > 0) {
+            int nextOpenTag = content.indexOf(openTag, searchIndex);
+            int nextCloseTag = content.indexOf(closeTag, searchIndex);
 
-            if(nextClose == -1) {
-                throw new IllegalArgumentException("Cannot find closing tag:" + closeTag);
+            // 没有找到闭合标签
+            if (nextCloseTag == -1) {
+                throw new IllegalArgumentException("Cannot find closing tag for: " + tagName);
             }
 
-            if(nextOpen != -1 && nextOpen < nextClose) {
-                openCount++;
-                currentIndex = nextOpen + openTag.length();
+            // 如果下一个打开标签在闭合标签之前，说明有嵌套
+            if (nextOpenTag != -1 && nextOpenTag < nextCloseTag) {
+                nestLevel++;
+                searchIndex = nextOpenTag + openTag.length();
             } else {
-                openCount--;
-                currentIndex = nextClose + closeTag.length();
+                nestLevel--;
+                searchIndex = nextCloseTag + closeTag.length();
             }
         }
 
-        return currentIndex - closeTag.length();
+        return searchIndex;
     }
 
 }

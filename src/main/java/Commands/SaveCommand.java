@@ -21,7 +21,8 @@ public class SaveCommand implements Command {
         }
 
         String fileName = filepath[0];
-        String htmlcontent = HtmlContext.getInstance().getHtmlContent().getTextContent();
+        String htmlcontent = HtmlContext.getInstance().getHtmlContent().toString();
+        System.out.println(htmlcontent);
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             writer.write(htmlcontent);
